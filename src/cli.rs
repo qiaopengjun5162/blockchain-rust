@@ -1,17 +1,16 @@
+use std::process::exit;
+
 use clap::{arg, Command};
 
 use crate::blockchain::Blockchain;
 use crate::errors::Result;
+use crate::transaction::Transaction;
 
-pub struct Cli {
-    bc: Blockchain,
-}
+pub struct Cli {}
 
 impl Cli {
     pub fn new() -> Result<Cli> {
-        Ok(Cli {
-            bc: Blockchain::new()?,
-        })
+        Ok(Cli {})
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -21,32 +20,69 @@ impl Cli {
             .about("blockchain in rust: a simple blockchain for learning")
             .subcommand(Command::new("printchain").about("print all the chain blocks"))
             .subcommand(
-                Command::new("addblock")
-                    .about("add a block in the blockchain")
-                    .arg(arg!(<DATA>" 'the blockchain data'")),
+                Command::new("getbalance")
+                    .about("get balance in the blochain")
+                    .arg(arg!(<ADDRESS>"'The Address it get balance for'")),
+            )
+            .subcommand(
+                Command::new("create")
+                    .about("Create new blochain")
+                    .arg(arg!(<ADDRESS>"'The Address to send gensis block reqward to' ")),
+            )
+            .subcommand(
+                Command::new("send")
+                    .about("send in the blockchain")
+                    .arg(arg!(<FROM>" 'Source wallet address'"))
+                    .arg(arg!(<TO>" 'Destination wallet address'"))
+                    .arg(arg!(<AMOUNT>" 'Destination wallet address'")),
             )
             .get_matches();
-        if let Some(ref matches) = matches.subcommand_matches("addblock") {
-            if let Some(c) = matches.get_one::<String>("DATA") {
-                self.addblock(String::from(c))?;
-            } else {
-                println!("Not printint testing lists...");
+
+        if let Some(ref matches) = matches.subcommand_matches("create") {
+            if let Some(address) = matches.get_one::<String>("ADDRESS") {
+                let address = String::from(address);
+                Blockchain::create_blockchain(address.clone())?;
+                println!("create blockchain");
             }
         }
+        if let Some(ref matches) = matches.subcommand_matches("getbalance") {
+            if let Some(address) = matches.get_one::<String>("ADDRESS") {
+                let address = String::from(address);
+                let bc = Blockchain::new()?;
+                let utxos = bc.find_UTXO(&address);
+                let mut blance = 0;
+                for out in utxos {
+                    blance += out.value;
+                }
+                println!("Balance of '{}'; {} ", address, blance);
+            }
+        }
+        if let Some(ref matches) = matches.subcommand_matches("send") {
+            let from = if let Some(address) = matches.get_one::<String>("FROM") {
+                address
+            } else {
+                println!("from not supply!: usage");
+                exit(1);
+            };
 
-        if let Some(_) = matches.subcommand_matches("printchain") {
-            self.print_chain();
+            let to = if let Some(address) = matches.get_one::<String>("TO") {
+                address
+            } else {
+                println!("to not supply!: usage");
+                exit(1);
+            };
+
+            let amount: i32 = if let Some(amount) = matches.get_one::<String>("AMOUNT") {
+                amount.parse()?
+            } else {
+                println!("amount not supply!: usage");
+                exit(1);
+            };
+            let mut bc = Blockchain::new()?;
+            let tx = Transaction::new_UTXO(from, to, amount, &bc)?;
+            bc.add_block(vec![tx])?;
+            println!("success!");
         }
         Ok(())
-    }
-
-    fn addblock(&mut self, data: String) -> Result<()> {
-        self.bc.add_block(vec![])
-    }
-
-    fn print_chain(&mut self) {
-        for b in &mut self.bc.iter() {
-            println!("block: {:#?}", b);
-        }
     }
 }

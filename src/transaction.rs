@@ -2,6 +2,7 @@ use crate::{blockchain::Blockchain, errors::Result};
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use failure::format_err;
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 
 /// Transaction represents a Bitcoin transaction
