@@ -5,7 +5,8 @@ use log::info;
 
 use crate::block::Block;
 use crate::errors::Result;
-use crate::transaction::{TXOutput, Transaction};
+use crate::transaction::Transaction;
+use crate::tx::TXOutput;
 
 const TARGET_HEXT: usize = 4;
 const GENESIS_COINBASE_DATA: &str =
