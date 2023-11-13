@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use clap::parser::IdsRef;
+use failure::format_err;
 use log::info;
 
 use crate::block::Block;
@@ -74,7 +75,7 @@ impl Blockchain {
     }
 
     /// FindUnspentTransactions returns a list of transactions containing unspent outputs
-    fn find_unspent_transactions(&self, address: &str) -> Vec<Transaction> {
+    fn find_unspent_transactions(&self, address: &[u8]) -> Vec<Transaction> {
         let mut spent_TXOs: HashMap<String, Vec<i32>> = HashMap::new();
         let mut unspend_TXs: Vec<Transaction> = Vec::new();
 
@@ -113,7 +114,7 @@ impl Blockchain {
     }
 
     /// FindUTXO finds and returns all unspent transaction outputs
-    pub fn find_UTXO(&self, address: &str) -> Vec<TXOutput> {
+    pub fn find_UTXO(&self, address: &[u8]) -> Vec<TXOutput> {
         let mut utxos = Vec::<TXOutput>::new();
         let unspend_TXs = self.find_unspent_transactions(address);
         for tx in unspend_TXs {
@@ -129,7 +130,7 @@ impl Blockchain {
     /// FindUnspentTransactions returns a list of transactions containing unspent outputs
     pub fn find_spendable_outputs(
         &self,
-        address: &str,
+        address: &[u8],
         amount: i32,
     ) -> (i32, HashMap<String, Vec<i32>>) {
         let mut unspent_outputs: HashMap<String, Vec<i32>> = HashMap::new();
@@ -161,6 +162,40 @@ impl Blockchain {
             current_hash: self.current_hash.clone(),
             bc: &self,
         }
+    }
+
+    /// FindTransaction finds a transaction by its ID
+    pub fn find_transaction(&self, id: &str) -> Result<Transaction> {
+        for b in self.iter() {
+            for tx in b.get_transaction() {
+                if tx.id == id {
+                    return Ok(tx.clone());
+                }
+            }
+        }
+        Err(format_err!("Transaction is not found in blockchain"))
+    }
+
+    fn get_prev_TXs(&self, tx: &Transaction) -> Result<HashMap<String, Transaction>> {
+        let mut prev_TXs = HashMap::new();
+        for vin in &tx.vin {
+            let prev_TX = self.find_transaction(&vin.txid)?;
+            prev_TXs.insert(prev_TX.id.clone(), prev_TX);
+        }
+        Ok(prev_TXs)
+    }
+
+    /// SignTransaction signs inputs of a Transaction
+    pub fn sign_transaction(&self, tx: &mut Transaction, private_key: &[u8]) -> Result<()> {
+        let prev_TXs = self.get_prev_TXs(tx)?;
+        tx.sign(private_key, prev_TXs)?;
+        Ok(())
+    }
+
+    /// VerifyTransaction verifies transaction input signatures
+    pub fn verify_transaction(&self, tx: &mut Transaction) -> Result<bool> {
+        let prev_TXs = self.get_prev_TXs(tx)?;
+        tx.verify(prev_TXs)
     }
 }
 
