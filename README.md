@@ -104,4 +104,14 @@ block: Block {
     height: 0,
     nonce: 23668,
 }
+
+ 4720  cargo run createwallet
+ 4721  cargo run getbalance 3QQFKRAY7fakJsu7dSAMpfit1BzqBqyN8A
+ 4722  cargo run create 3QQFKRAY7fakJsu7dSAMpfit1BzqBqyN8A
+ 4723  cargo run getbalance 3QQFKRAY7fakJsu7dSAMpfit1BzqBqyN8A
+ 4724  cargo run createwallet
+ 4725  cargo run getbalance 3AuRE7oyh6DAJVg95kYNkN8yx6zJFSYLE2
+ 4726  cargo run send 3QQFKRAY7fakJsu7dSAMpfit1BzqBqyN8A 3AuRE7oyh6DAJVg95kYNkN8yx6zJFSYLE2 10
+ 4727  cargo run getbalance 3QQFKRAY7fakJsu7dSAMpfit1BzqBqyN8A
+ 4728  cargo run getbalance 3AuRE7oyh6DAJVg95kYNkN8yx6zJFSYLE2
 ```

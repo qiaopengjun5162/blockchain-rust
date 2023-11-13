@@ -4,7 +4,7 @@ use crate::{
     blockchain::Blockchain,
     errors::Result,
     tx::{TXInput, TXOutput},
-    wallet::Wallets,
+    wallet::{self, Wallets},
 };
 use crypto::{digest::Digest, ed25519};
 use crypto::{ripemd160::Ripemd160, sha2::Sha256};
@@ -37,7 +37,7 @@ impl Transaction {
         let mut pub_key_hash = wallet.public_key.clone();
         hash_pub_key(&mut pub_key_hash);
 
-        let acc_v = bc.find_spendable_outputs(from, amount);
+        let acc_v = bc.find_spendable_outputs(&pub_key_hash, amount);
         if acc_v.0 < amount {
             error!("Not Enough balance");
             return Err(format_err!(
@@ -67,7 +67,7 @@ impl Transaction {
             vin,
             vout,
         };
-        tx.hash()?;
+        tx.id = tx.hash()?;
         bc.sign_transaction(&mut tx, &wallet.secret_key)?;
         Ok(tx)
     }
@@ -85,18 +85,10 @@ impl Transaction {
             }],
             vout: vec![TXOutput::new(100, to)?],
         };
-        tx.hash()?;
+        tx.id = tx.hash()?;
+
         Ok(tx)
     }
-
-    // /// SetID sets ID of a transaction
-    // fn set_id(&mut self) -> Result<()> {
-    //     let mut hasher = Sha256::new();
-    //     let data = bincode::serialize(self)?;
-    //     hasher.input(&data);
-    //     self.id = hasher.result_str();
-    //     Ok(())
-    // }
 
     /// IsCoinbase checks whether the transaction is coinbase
     pub fn is_coinbase(&self) -> bool {
@@ -203,12 +195,12 @@ impl Transaction {
     }
 }
 
-pub fn hash_pub_key(pubKey: &mut Vec<u8>) {
+pub fn hash_pub_key(pub_key: &mut Vec<u8>) {
     let mut hasher1 = Sha256::new();
-    hasher1.input(pubKey);
-    hasher1.result(pubKey);
+    hasher1.input(pub_key);
+    hasher1.result(pub_key);
     let mut hasher2 = Ripemd160::new();
-    hasher2.input(pubKey);
-    pubKey.resize(20, 0);
-    hasher2.result(pubKey);
+    hasher2.input(pub_key);
+    pub_key.resize(20, 0);
+    hasher2.result(pub_key);
 }
