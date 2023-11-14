@@ -7,6 +7,7 @@ mod cli;
 mod errors;
 mod transaction;
 mod tx;
+mod utxoset;
 mod wallet;
 
 fn main() -> Result<()> {

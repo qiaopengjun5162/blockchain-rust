@@ -1,11 +1,14 @@
-use crate::{
-    errors::Result,
-    transaction::{hash_pub_key, Transaction},
-};
+use crate::{errors::Result, transaction::Transaction, wallet::hash_pub_key};
 use bitcoincash_addr::Address;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+// TXOutputs collects TXOutput
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TXOutputs {
+    pub outputs: Vec<TXOutput>,
+}
 
 /// TXInput represents a transaction input
 #[derive(Debug, Clone, Serialize, Deserialize)]
