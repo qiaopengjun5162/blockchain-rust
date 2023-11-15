@@ -5,7 +5,7 @@ use clap::{arg, Command};
 
 use crate::blockchain::Blockchain;
 use crate::errors::Result;
-use crate::server::{self, Server};
+use crate::server::Server;
 use crate::transaction::Transaction;
 use crate::utxoset::UTXOSet;
 use crate::wallet::Wallets;
@@ -86,21 +86,24 @@ impl Cli {
         }
 
         if let Some(_) = matches.subcommand_matches("createwallet") {
-            let mut ws = Wallets::new()?;
-            let address = ws.create_wallet();
-            ws.save_all()?;
-            println!("success: address: {}", address);
+            // let mut ws = Wallets::new()?;
+            // let address = ws.create_wallet();
+            // ws.save_all()?;
+            // println!("success: address: {}", address);
+            println!("address: {}", cmd_create_wallet()?);
         }
 
         if let Some(_) = matches.subcommand_matches("reindex") {
-            let bc = Blockchain::new()?;
-            let utxo_set = UTXOSet { blockchain: bc };
-            utxo_set.reindex()?;
-            let count = utxo_set.count_transactions()?;
-            println!(
-                "Done! There are {} transactions in the blockchain UTXO set",
-                count
-            );
+            // let bc = Blockchain::new()?;
+            // let utxo_set = UTXOSet { blockchain: bc };
+            // utxo_set.reindex()?;
+            // let count = utxo_set.count_transactions()?;
+            // println!(
+            //     "Done! There are {} transactions in the blockchain UTXO set",
+            //     count
+            // );
+            let count = cmd_reindex()?;
+            println!("Done! There are {} transactions in the UTXO set.", count);
         }
 
         if let Some(_) = matches.subcommand_matches("listaddresses") {

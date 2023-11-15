@@ -39,7 +39,7 @@ impl Wallet {
         }
     }
 
-    fn get_address(&self) -> String {
+    pub fn get_address(&self) -> String {
         // 1. 将self的public_key克隆到pub_hash中。
         let mut pub_hash = self.public_key.clone();
         // 2. 调用hash_pub_key函数，对pub_hash进行哈希处理。

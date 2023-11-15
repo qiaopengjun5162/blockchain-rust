@@ -1,16 +1,15 @@
 use std::collections::HashMap;
 
 use crate::{
-    blockchain::Blockchain,
     errors::Result,
     tx::{TXInput, TXOutput},
     utxoset::UTXOSet,
-    wallet::{self, Wallet, Wallets},
+    wallet::Wallet,
 };
 use crypto::{digest::Digest, ed25519};
 use crypto::{ripemd160::Ripemd160, sha2::Sha256};
 use failure::format_err;
-use log::{debug, error, info};
+use log::error;
 use serde::{Deserialize, Serialize};
 
 /// Transaction represents a Bitcoin transaction
@@ -111,9 +110,9 @@ impl Transaction {
         let mut tx_copy = self.trim_copy();
 
         for in_id in 0..self.vin.len() {
-            let prev_Tx = prev_TXs.get(&self.vin[in_id].txid).unwrap();
+            let prev_tx = prev_TXs.get(&self.vin[in_id].txid).unwrap();
             tx_copy.vin[in_id].signature.clear();
-            tx_copy.vin[in_id].pub_key = prev_Tx.vout[self.vin[in_id].vout as usize]
+            tx_copy.vin[in_id].pub_key = prev_tx.vout[self.vin[in_id].vout as usize]
                 .pub_key_hash
                 .clone();
 

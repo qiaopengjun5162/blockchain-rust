@@ -1,17 +1,14 @@
 use std::collections::HashMap;
-use std::hash::Hash;
 
-use clap::parser::IdsRef;
-use clap::Id;
 use failure::format_err;
 use log::info;
 
 use crate::block::Block;
 use crate::errors::Result;
 use crate::transaction::Transaction;
-use crate::tx::{TXOutput, TXOutputs};
+use crate::tx::TXOutputs;
 
-const TARGET_HEXT: usize = 4;
+const _TARGET_HEXT: usize = 4;
 const GENESIS_COINBASE_DATA: &str =
     "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks";
 
@@ -46,7 +43,7 @@ impl Blockchain {
     /// CreateBlockchain creates a new blockchain DB
     pub fn create_blockchain(address: String) -> Result<Blockchain> {
         info!("Creating new blockchain");
-        if let Err(e) = std::fs::remove_dir_all("data/blocks") {
+        if let Err(_) = std::fs::remove_dir_all("data/blocks") {
             info!("blocks not exist to delete")
         }
 
@@ -112,6 +109,15 @@ impl Blockchain {
         list
     }
 
+    /// VerifyTransaction verifies transaction input signatures
+    pub fn verify_transaction(&self, tx: &Transaction) -> Result<bool> {
+        if tx.is_coinbase() {
+            return Ok(true);
+        }
+        let prev_txs = self.get_prev_TXs(tx)?;
+        tx.verify(prev_txs)
+    }
+
     pub fn add_block(&mut self, block: Block) -> Result<()> {
         let data = bincode::serialize(&block)?;
         if let Some(_) = self.db.get(block.get_hash())? {
@@ -144,32 +150,32 @@ impl Blockchain {
 
     /// FindUnspentTransactions returns a list of transactions containing unspent outputs
     fn find_unspent_transactions(&self, address: &[u8]) -> Vec<Transaction> {
-        let mut spent_TXOs: HashMap<String, Vec<i32>> = HashMap::new();
-        let mut unspend_TXs: Vec<Transaction> = Vec::new();
+        let mut spent_txos: HashMap<String, Vec<i32>> = HashMap::new();
+        let mut unspend_txs: Vec<Transaction> = Vec::new();
 
         for block in self.iter() {
             for tx in block.get_transaction() {
                 for index in 0..tx.vout.len() {
-                    if let Some(ids) = spent_TXOs.get(&tx.id) {
+                    if let Some(ids) = spent_txos.get(&tx.id) {
                         if ids.contains(&(index as i32)) {
                             continue;
                         }
                     }
 
                     if tx.vout[index].can_be_unlock_with(address) {
-                        unspend_TXs.push(tx.to_owned())
+                        unspend_txs.push(tx.to_owned())
                     }
                 }
 
                 if !tx.is_coinbase() {
                     for i in &tx.vin {
                         if i.can_unlock_output_with(address) {
-                            match spent_TXOs.get_mut(&i.txid) {
+                            match spent_txos.get_mut(&i.txid) {
                                 Some(v) => {
                                     v.push(i.vout);
                                 }
                                 None => {
-                                    spent_TXOs.insert(i.txid.clone(), vec![i.vout]);
+                                    spent_txos.insert(i.txid.clone(), vec![i.vout]);
                                 }
                             }
                         }
@@ -178,7 +184,7 @@ impl Blockchain {
             }
         }
 
-        unspend_TXs
+        unspend_txs
     }
 
     /// FindUTXO finds and returns all unspent transaction outputs
@@ -247,26 +253,26 @@ impl Blockchain {
     }
 
     fn get_prev_TXs(&self, tx: &Transaction) -> Result<HashMap<String, Transaction>> {
-        let mut prev_TXs = HashMap::new();
+        let mut prev_txs = HashMap::new();
         for vin in &tx.vin {
-            let prev_TX = self.find_transaction(&vin.txid)?;
-            prev_TXs.insert(prev_TX.id.clone(), prev_TX);
+            let prev_tx = self.find_transaction(&vin.txid)?;
+            prev_txs.insert(prev_tx.id.clone(), prev_tx);
         }
-        Ok(prev_TXs)
+        Ok(prev_txs)
     }
 
     /// SignTransaction signs inputs of a Transaction
     pub fn sign_transaction(&self, tx: &mut Transaction, private_key: &[u8]) -> Result<()> {
-        let prev_TXs = self.get_prev_TXs(tx)?;
-        tx.sign(private_key, prev_TXs)?;
+        let prev_txs = self.get_prev_TXs(tx)?;
+        tx.sign(private_key, prev_txs)?;
         Ok(())
     }
 
-    /// VerifyTransaction verifies transaction input signatures
-    pub fn verify_transaction(&self, tx: &Transaction) -> Result<bool> {
-        let prev_txs = self.get_prev_TXs(tx)?;
-        tx.verify(prev_txs)
-    }
+    // /// VerifyTransaction verifies transaction input signatures
+    // pub fn verify_transaction(&self, tx: &Transaction) -> Result<bool> {
+    //     let prev_txs = self.get_prev_TXs(tx)?;
+    //     tx.verify(prev_txs)
+    // }
 }
 
 impl<'a> Iterator for BlockchainIter<'a> {
@@ -296,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_add_block() {
-        let mut b = Blockchain::new().unwrap();
+        let b = Blockchain::new().unwrap();
         // b.add_block("data".to_string());
         // b.add_block("data1".to_string());
         // b.add_block("data2".to_string());

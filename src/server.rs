@@ -251,6 +251,10 @@ impl Server {
         Ok(())
     }
 
+    fn get_in_transit(&self) -> Vec<String> {
+        self.inner.lock().unwrap().blocks_in_transit.clone()
+    }
+
     fn handle_block(&self, msg: Blockmsg) -> Result<()> {
         info!(
             "receive block msg: {}, {}",
@@ -295,6 +299,15 @@ impl Server {
             .get_block(block_hash)
     }
 
+    fn verify_tx(&self, tx: &Transaction) -> Result<bool> {
+        self.inner
+            .lock()
+            .unwrap()
+            .utxo
+            .blockchain
+            .verify_transaction(tx)
+    }
+
     fn handle_version(&self, msg: Versionmsg) -> Result<()> {
         info!("receive version msg: {:#?}", msg);
         let my_best_height = self.get_best_height()?;
@@ -323,6 +336,14 @@ impl Server {
         let block_hashs = self.get_block_hashs();
         self.send_inv(&msg.addr_from, "block", block_hashs)?;
         Ok(())
+    }
+
+    fn mine_block(&self, txs: Vec<Transaction>) -> Result<Block> {
+        self.inner.lock().unwrap().utxo.blockchain.mine_block(txs)
+    }
+
+    fn utxo_reindex(&self) -> Result<()> {
+        self.inner.lock().unwrap().utxo.reindex()
     }
 
     fn handle_tx(&self, msg: Txmsg) -> Result<()> {
@@ -456,6 +477,7 @@ impl Server {
             Message::Tx(data) => self.handle_tx(data)?,
             Message::GetData(data) => self.handle_get_data(data)?,
         }
+        Ok(())
     }
 }
 
