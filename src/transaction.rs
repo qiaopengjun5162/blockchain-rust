@@ -5,7 +5,7 @@ use crate::{
     errors::Result,
     tx::{TXInput, TXOutput},
     utxoset::UTXOSet,
-    wallet::{self, Wallets},
+    wallet::{self, Wallet, Wallets},
 };
 use crypto::{digest::Digest, ed25519};
 use crypto::{ripemd160::Ripemd160, sha2::Sha256};
@@ -23,17 +23,17 @@ pub struct Transaction {
 
 impl Transaction {
     /// NewUTXOTransaction creates a new transaction
-    pub fn new_UTXO(from: &str, to: &str, amount: i32, bc: &UTXOSet) -> Result<Transaction> {
+    pub fn new_UTXO(wallet: &Wallet, to: &str, amount: i32, bc: &UTXOSet) -> Result<Transaction> {
         let mut vin = Vec::new();
 
-        let wallets = Wallets::new()?;
-        let wallet = match wallets.get_wallet(from) {
-            Some(w) => w,
-            None => return Err(format_err!("from wallet not found in wallet")),
-        };
-        if let None = wallets.get_wallet(&to) {
-            return Err(format_err!("to wallet not found in wallet"));
-        };
+        // let wallets = Wallets::new()?;
+        // let wallet = match wallets.get_wallet(from) {
+        //     Some(w) => w,
+        //     None => return Err(format_err!("from wallet not found in wallet")),
+        // };
+        // if let None = wallets.get_wallet(&to) {
+        //     return Err(format_err!("to wallet not found in wallet"));
+        // };
 
         let mut pub_key_hash = wallet.public_key.clone();
         hash_pub_key(&mut pub_key_hash);
@@ -61,7 +61,7 @@ impl Transaction {
 
         let mut vout = vec![TXOutput::new(amount, to.to_string())?];
         if acc_v.0 > amount {
-            vout.push(TXOutput::new(acc_v.0 - amount, from.to_string())?)
+            vout.push(TXOutput::new(acc_v.0 - amount, wallet.get_address())?)
         }
         let mut tx = Transaction {
             id: String::new(),
@@ -97,7 +97,7 @@ impl Transaction {
         self.vin.len() == 1 && self.vin[0].txid.is_empty() && self.vin[0].vout == -1
     }
 
-    pub fn verify(&mut self, prev_TXs: HashMap<String, Transaction>) -> Result<bool> {
+    pub fn verify(&self, prev_TXs: HashMap<String, Transaction>) -> Result<bool> {
         if self.is_coinbase() {
             return Ok(true);
         }

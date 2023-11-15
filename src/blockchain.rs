@@ -64,20 +64,83 @@ impl Blockchain {
         Ok(bc)
     }
 
-    pub fn add_block(&mut self, transactions: Vec<Transaction>) -> Result<Block> {
+    pub fn mine_block(&mut self, transactions: Vec<Transaction>) -> Result<Block> {
+        info!("Mining a new block");
+        for tx in &transactions {
+            if !self.verify_transaction(tx)? {
+                return Err(format_err!("ERROR: Invalid transaction"));
+            }
+        }
         let lasthash = self.db.get("LAST")?.unwrap();
-
-        let new_block = Block::new_block(
+        let newblock = Block::new_block(
             transactions,
             String::from_utf8(lasthash.to_vec())?,
-            TARGET_HEXT,
+            self.get_best_height()? + 1,
         )?;
         self.db
-            .insert(new_block.get_hash(), bincode::serialize(&new_block)?)?;
-        self.db.insert("LAST", new_block.get_hash().as_bytes())?;
-        self.current_hash = new_block.get_hash();
-        Ok(new_block)
+            .insert(newblock.get_hash(), bincode::serialize(&newblock)?)?;
+        self.db.insert("LAST", newblock.get_hash().as_bytes())?;
+        self.db.flush()?;
+        self.current_hash = newblock.get_hash();
+        Ok(newblock)
     }
+
+    // GetBlock finds a block by its hash and returns it
+    pub fn get_block(&self, block_hash: &str) -> Result<Block> {
+        let data = self.db.get(block_hash)?.unwrap();
+        let block = bincode::deserialize(&data.to_vec())?;
+        Ok(block)
+    }
+
+    pub fn get_best_height(&self) -> Result<i32> {
+        let lasthash = if let Some(h) = self.db.get("LAST")? {
+            h
+        } else {
+            return Ok(-1);
+            // return Ok(!0);
+        };
+        let last_data = self.db.get(lasthash)?.unwrap();
+        let last_block: Block = bincode::deserialize(&last_data.to_vec())?;
+        Ok(last_block.get_height())
+    }
+
+    pub fn get_block_hashs(&self) -> Vec<String> {
+        let mut list = Vec::new();
+        for b in self.iter() {
+            list.push(b.get_hash());
+        }
+        list
+    }
+
+    pub fn add_block(&mut self, block: Block) -> Result<()> {
+        let data = bincode::serialize(&block)?;
+        if let Some(_) = self.db.get(block.get_hash())? {
+            return Ok(());
+        }
+        self.db.insert(block.get_hash(), data)?;
+        let lastheight = self.get_best_height()?;
+        if block.get_height() > lastheight {
+            self.db.insert("LAST", block.get_hash().as_bytes())?;
+            self.current_hash = block.get_hash();
+            self.db.flush()?;
+        }
+        Ok(())
+    }
+
+    // pub fn add_block(&mut self, transactions: Vec<Transaction>) -> Result<Block> {
+    //     let lasthash = self.db.get("LAST")?.unwrap();
+
+    //     let new_block = Block::new_block(
+    //         transactions,
+    //         String::from_utf8(lasthash.to_vec())?,
+    //         TARGET_HEXT,
+    //     )?;
+    //     self.db
+    //         .insert(new_block.get_hash(), bincode::serialize(&new_block)?)?;
+    //     self.db.insert("LAST", new_block.get_hash().as_bytes())?;
+    //     self.current_hash = new_block.get_hash();
+    //     Ok(new_block)
+    // }
 
     /// FindUnspentTransactions returns a list of transactions containing unspent outputs
     fn find_unspent_transactions(&self, address: &[u8]) -> Vec<Transaction> {
@@ -200,9 +263,9 @@ impl Blockchain {
     }
 
     /// VerifyTransaction verifies transaction input signatures
-    pub fn verify_transaction(&self, tx: &mut Transaction) -> Result<bool> {
-        let prev_TXs = self.get_prev_TXs(tx)?;
-        tx.verify(prev_TXs)
+    pub fn verify_transaction(&self, tx: &Transaction) -> Result<bool> {
+        let prev_txs = self.get_prev_TXs(tx)?;
+        tx.verify(prev_txs)
     }
 }
 

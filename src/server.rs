@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{block::Block, errors::Result, transaction::Transaction, utxoset::UTXOSet};
 use std::{
     collections::{HashMap, HashSet},
-    io::Read,
+    io::{Read, Write},
     net::{TcpListener, TcpStream},
     sync::{Arc, Mutex},
     thread,
@@ -94,6 +94,12 @@ impl Server {
                 mempool: HashMap::new(),
             })),
         })
+    }
+
+    pub fn send_transaction(tx: &Transaction, utxoset: UTXOSet) -> Result<()> {
+        let server = Server::new("7000", "", utxoset)?;
+        server.send_tx(KNOWN_NODE1, tx)?;
+        Ok(())
     }
 
     pub fn start_server(&self) -> Result<()> {
@@ -264,6 +270,10 @@ impl Server {
         Ok(())
     }
 
+    fn add_block(&self, block: Block) -> Result<()> {
+        self.inner.lock().unwrap().utxo.blockchain.add_block(block)
+    }
+
     fn handle_get_data(&self, msg: GetDatamsg) -> Result<()> {
         info!("receive get data msg: {:#?}", msg);
         if msg.kind == "block" {
@@ -274,6 +284,15 @@ impl Server {
             self.send_tx(&msg.addr_from, &tx)?;
         }
         Ok(())
+    }
+
+    fn get_block(&self, block_hash: &str) -> Result<Block> {
+        self.inner
+            .lock()
+            .unwrap()
+            .utxo
+            .blockchain
+            .get_block(block_hash)
     }
 
     fn handle_version(&self, msg: Versionmsg) -> Result<()> {
@@ -402,7 +421,9 @@ impl Server {
         }
     }
 
-    fn get_mempool(&self) -> HashMap<String, Transaction> {}
+    fn get_mempool(&self) -> HashMap<String, Transaction> {
+        self.inner.lock().unwrap().mempool.clone()
+    }
 
     fn get_block_hashs(&self) -> Vec<String> {
         self.inner.lock().unwrap().utxo.blockchain.get_block_hashs()
