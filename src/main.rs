@@ -5,6 +5,7 @@ mod block;
 mod blockchain;
 mod cli;
 mod errors;
+mod server;
 mod transaction;
 mod tx;
 mod utxoset;
